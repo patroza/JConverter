@@ -20,6 +20,7 @@
 
 - If the first row contains alphabetical characters, then it is assumed to be the variable headers.
   If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
+- Each line must have an equal amount of columns. Otherwise an error is raised.
 - The default analysis type is BASIC.
 
 ### Output for the .inp file
