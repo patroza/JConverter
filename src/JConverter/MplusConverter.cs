@@ -95,20 +95,11 @@ namespace JConverter
 
             private string TransformLine(Tuple<int, string> line)
             {
-                var columns = line.Item2.Split('\t');
+                var columns = line.Item2.Split(_config.ColumnSplitter);
                 VerifyAmountOfColumns(line, columns);
-                if (columns.Any(x => NonNumerical.IsMatch(x)))
-                {
-                    if (line.Item1 != 0)
-                        throw new NotSupportedException(
-                            $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
-                    VariableNames = columns.ToList();
-                    return null;
-                }
-
-                foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
-                    columns[entry.Item1] = ProcessEntry(entry);
-                return string.Join("\t", columns);
+                return columns.Any(x => NonNumerical.IsMatch(x))
+                    ? ProcessVariableNamesLine(line, columns)
+                    : ProcessValueLine(columns);
             }
 
             private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
@@ -120,7 +111,23 @@ namespace JConverter
                         $"{HumanReadableLineNumber(line.Item1)} has {columns.Length} columns but should be {_amountOfColumns}");
             }
 
-            private string ProcessEntry(Tuple<int, string> column)
+            private string ProcessVariableNamesLine(Tuple<int, string> line, string[] columns)
+            {
+                if (line.Item1 != 0)
+                    throw new NotSupportedException(
+                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
+                VariableNames = columns.ToList();
+                return null;
+            }
+
+            private string ProcessValueLine(string[] columns)
+            {
+                foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
+                    columns[entry.Item1] = ProcessLine(entry);
+                return string.Join(_config.ColumnJoiner, columns);
+            }
+
+            private string ProcessLine(Tuple<int, string> column)
             {
                 var r = column.Item2;
                 r = ReplaceReplacements(r);
@@ -197,7 +204,9 @@ namespace JConverter
                 => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
 
             private string SplitAndJoinVariablesForComment(string[] variables)
-                => SplitWhenLonger(JoinVariableNamesForComment(variables), $"!{_config.DefaultIndent}", _config.MaxLineLength);
+                =>
+                    SplitWhenLonger(JoinVariableNamesForComment(variables), $"!{_config.DefaultIndent}",
+                        _config.MaxLineLength);
 
             private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
 
@@ -217,7 +226,8 @@ namespace JConverter
                 if (_variableNames.Any())
                 {
                     sb.AppendLine($"{_config.DefaultIndent}NAMES ARE");
-                    sb.AppendLine($"{SplitWhenLonger(JoinVariableNames(), $"{_config.DefaultIndent}\t", _config.MaxLineLength)};");
+                    sb.AppendLine(
+                        $"{SplitWhenLonger(JoinVariableNames(), $"{_config.DefaultIndent}\t", _config.MaxLineLength)};");
                     sb.AppendLine($"{_config.DefaultIndent}IDVARIABLE IS {_variableNames.First()};");
                 }
 
@@ -255,6 +265,8 @@ namespace JConverter
             public string AnalysisType { get; set; } = "BASIC";
             public string NewLine { get; set; } = Environment.NewLine;
             public string DefaultIndent { get; set; } = "\t\t";
+            public string ColumnJoiner { get; set; } = "\t";
+            public char ColumnSplitter { get; set; } = '\t';
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
     }
