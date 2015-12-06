@@ -15,7 +15,6 @@
 - If the first row contains alphabetical characters, then it is assumed to be the variable headers.
   If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
 - Each line must have an equal amount of columns. Otherwise an error is raised.
-- The default analysis type is BASIC.
 - Output files (.dat and .inp) should not exist already. Otherwise an error is raised.
 - Spaces in output file names are replaced by underscores (_)
 
@@ -31,7 +30,7 @@
 - If there are variable names that are not unique, adds a comment to the top listing them
 - Specifies DATA: FILE IS x.dat;
 - Specifies VARIABLE: NAMES ARE ...;
-  IDVARIABLE IS ...;
-  and MISSING ARE ALL (...);
-- Specifies ANALYSIS: TYPE IS ...;
+ - IDVARIABLE IS ...;  (The default is the first column)
+ - MISSING ARE ALL (...);
+- Specifies ANALYSIS: TYPE IS ...;  (The default is BASIC)
 - Splits up long lines over multiple lines
