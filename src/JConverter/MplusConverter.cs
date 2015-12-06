@@ -18,8 +18,9 @@ namespace JConverter
         {
             _config = config;
             InFile = inFile;
-            OutDatFile = inFile + ".dat";
-            OutInpFile = inFile + ".inp";
+            var inFileProcessed = InFile.Replace(" ", "_");
+            OutDatFile = inFileProcessed + ".dat";
+            OutInpFile = inFileProcessed + ".inp";
         }
 
         public string OutInpFile { get; }
