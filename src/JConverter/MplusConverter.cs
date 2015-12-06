@@ -63,7 +63,7 @@ namespace JConverter
             => File.WriteAllText(OutDatFile, GenerateTransformedDatData(data));
 
         private string GenerateTransformedDatData(IEnumerable<string> data)
-            => string.Join(_config.NewLineCharacters, data.Where(x => x != null));
+            => string.Join(_config.NewLine, data.Where(x => x != null));
 
         private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
 
@@ -177,7 +177,7 @@ namespace JConverter
                 var variables = GetTooLongVariableNames().ToArray();
                 if (!variables.Any()) return;
                 sb.AppendLine(
-                    $"!\tThe following variable names are too long, you should make them shorter:\n{SplitAndJoinVariablesForComment(variables)}");
+                    $"!\tThe following variable names are too long, you should make them shorter:{_config.NewLine}{SplitAndJoinVariablesForComment(variables)}");
                 sb.AppendLine();
             }
 
@@ -189,7 +189,7 @@ namespace JConverter
                 var variables = GetNonUniqueVariableNames().ToArray();
                 if (!variables.Any()) return;
                 sb.AppendLine(
-                    $"!\tThe following variable names are not unique:\n{SplitAndJoinVariablesForComment(variables)}");
+                    $"!\tThe following variable names are not unique:{_config.NewLine}{SplitAndJoinVariablesForComment(variables)}");
                 sb.AppendLine();
             }
 
@@ -203,7 +203,8 @@ namespace JConverter
 
             private void AddDataInfo(StringBuilder sb)
             {
-                sb.AppendLine($"DATA:\n{_config.DefaultIndent}FILE IS {_outDatFile};");
+                sb.AppendLine("DATA:");
+                sb.AppendLine($"{_config.DefaultIndent}FILE IS {_outDatFile};");
                 sb.AppendLine();
             }
 
@@ -212,10 +213,11 @@ namespace JConverter
                 if (!_variableNames.Any() && !_config.HasEmptyReplacement())
                     return;
 
-                sb.Append("VARIABLE:\n");
+                sb.AppendLine("VARIABLE:");
                 if (_variableNames.Any())
                 {
-                    sb.AppendLine($"{_config.DefaultIndent}NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), $"{_config.DefaultIndent}\t", _config.MaxLineLength)};");
+                    sb.AppendLine($"{_config.DefaultIndent}NAMES ARE");
+                    sb.AppendLine($"{SplitWhenLonger(JoinVariableNames(), $"{_config.DefaultIndent}\t", _config.MaxLineLength)};");
                     sb.AppendLine($"{_config.DefaultIndent}IDVARIABLE IS {_variableNames.First()};");
                 }
 
@@ -229,7 +231,7 @@ namespace JConverter
 
             private string SplitWhenLonger(string input, string prefix = "", int length = 80)
                 =>
-                    string.Join(_config.NewLineCharacters,
+                    string.Join(_config.NewLine,
                         SplitWhenLongerInternal(input, length).Select(x => prefix + x));
 
             private static IEnumerable<string> SplitWhenLongerInternal(string input, int length = 80)
@@ -238,7 +240,8 @@ namespace JConverter
 
             private void AddAnalysisInfo(StringBuilder sb)
             {
-                sb.AppendLine($"ANALYSIS:\n{_config.DefaultIndent}TYPE IS {_config.AnalysisType};");
+                sb.AppendLine("ANALYSIS:");
+                sb.AppendLine($"{_config.DefaultIndent}TYPE IS {_config.AnalysisType};");
                 sb.AppendLine();
             }
         }
@@ -250,7 +253,7 @@ namespace JConverter
             public int MaxHeaderLength { get; set; } = 8;
             public int MaxLineLength { get; set; } = 80;
             public string AnalysisType { get; set; } = "BASIC";
-            public string NewLineCharacters { get; set; } = Environment.NewLine;
+            public string NewLine { get; set; } = Environment.NewLine;
             public string DefaultIndent { get; set; } = "\t\t";
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
