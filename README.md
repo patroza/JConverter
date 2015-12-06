@@ -12,7 +12,7 @@
 
 ### General
 
-- If the first row contains alphabetical characters, then it is assumed to be the variable headers.
+- If the first row contains alphabetical characters, then it is assumed to be the variable/column names.
   If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
 - Each line must have an equal amount of columns. Otherwise an error is raised.
 - Output files (.dat and .inp) should not exist already. Otherwise an error is raised.
