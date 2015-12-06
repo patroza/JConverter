@@ -9,11 +9,8 @@ namespace JConverter
 {
     internal class MplusConverter
     {
-        private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
         private readonly Config _config;
-        private int _amountOfColumns;
-        private string[] _data;
-        private List<string> _variableNames = new List<string>();
+        private SpssDataTransformer _spssDataTransformer;
 
         public MplusConverter(string inFile, Config config)
         {
@@ -34,9 +31,8 @@ namespace JConverter
         {
             ConfirmInputFileExists();
             ConfirmOutFilesDontExist();
-            ReadInputFile();
-            TransformData();
-            CreateTransformedDatFile();
+            var data = ParseAndTransformData();
+            CreateTransformedDatFile(data);
             CreateInpFile();
         }
 
@@ -53,77 +49,102 @@ namespace JConverter
                 throw new Exception("The .inp file already exists, please delete it first: " + OutInpFile);
         }
 
-        private void ReadInputFile() => _data = File.ReadAllLines(InFile);
-
-        private void TransformData()
+        private IEnumerable<string> ParseAndTransformData()
         {
-            foreach (var lInfo in _data.Select((x, i) => Tuple.Create(i, x)))
-                _data[lInfo.Item1] = TransformLine(lInfo);
+            var data = ReadInputFile();
+            _spssDataTransformer = new SpssDataTransformer(_config, data);
+            _spssDataTransformer.TransformData();
+            return data;
         }
 
-        private void CreateTransformedDatFile() => File.WriteAllText(OutDatFile, GenerateTransformedDatData());
+        private string[] ReadInputFile() => File.ReadAllLines(InFile);
 
-        private string GenerateTransformedDatData()
-            => string.Join(_config.NewLineCharacters, _data.Where(x => x != null));
+        private void CreateTransformedDatFile(IEnumerable<string> data)
+            => File.WriteAllText(OutDatFile, GenerateTransformedDatData(data));
 
-        private void CreateInpFile()
-            =>
-                File.WriteAllText(OutInpFile,
-                    GenerateInpData());
+        private string GenerateTransformedDatData(IEnumerable<string> data)
+            => string.Join(_config.NewLineCharacters, data.Where(x => x != null));
+
+        private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
 
         private string GenerateInpData()
-            => new InpDataGenerator(_config, _variableNames, new FileInfo(OutDatFile).Name).GenerateInpData();
+            =>
+                new InpDataGenerator(_config, _spssDataTransformer.VariableNames, new FileInfo(OutDatFile).Name)
+                    .GenerateInpData();
 
-        private string TransformLine(Tuple<int, string> line)
+        internal class SpssDataTransformer
         {
-            var columns = line.Item2.Split('\t');
-            VerifyAmountOfColumns(line, columns);
-            if (columns.Any(x => NonNumerical.IsMatch(x)))
+            private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
+            private readonly Config _config;
+            private readonly string[] _data;
+            private int _amountOfColumns;
+
+            public SpssDataTransformer(Config config, string[] data)
             {
-                if (line.Item1 != 0)
-                    throw new NotSupportedException(
-                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
-                _variableNames = columns.ToList();
-                return null;
+                _config = config;
+                _data = data;
             }
 
-            foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
-                columns[entry.Item1] = ProcessEntry(entry);
-            return string.Join("\t", columns);
+            public List<string> VariableNames { get; private set; } = new List<string>();
+
+            public void TransformData()
+            {
+                foreach (var lInfo in _data.Select((x, i) => Tuple.Create(i, x)))
+                    _data[lInfo.Item1] = TransformLine(lInfo);
+            }
+
+            private string TransformLine(Tuple<int, string> line)
+            {
+                var columns = line.Item2.Split('\t');
+                VerifyAmountOfColumns(line, columns);
+                if (columns.Any(x => NonNumerical.IsMatch(x)))
+                {
+                    if (line.Item1 != 0)
+                        throw new NotSupportedException(
+                            $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
+                    VariableNames = columns.ToList();
+                    return null;
+                }
+
+                foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
+                    columns[entry.Item1] = ProcessEntry(entry);
+                return string.Join("\t", columns);
+            }
+
+            private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
+            {
+                if (line.Item1 == 0)
+                    _amountOfColumns = columns.Length;
+                else if (columns.Length != _amountOfColumns)
+                    throw new Exception(
+                        $"{HumanReadableLineNumber(line.Item1)} has {columns.Length} columns but should be {_amountOfColumns}");
+            }
+
+            private string ProcessEntry(Tuple<int, string> column)
+            {
+                var r = column.Item2;
+                r = ReplaceReplacements(r);
+                r = ReplaceEmpty(r);
+                return r;
+            }
+
+            private string ReplaceEmpty(string column)
+            {
+                if (_config.HasEmptyReplacement() && string.IsNullOrWhiteSpace(column))
+                    return _config.EmptyReplacement;
+                return column;
+            }
+
+            private string ReplaceReplacements(string column)
+            {
+                if (_config.Replacements == null) return column;
+                return _config.Replacements.Aggregate(column,
+                    (current, replacement) => current.Replace(replacement.Key, replacement.Value));
+            }
+
+            private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
         }
 
-        private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
-        {
-            if (line.Item1 == 0)
-                _amountOfColumns = columns.Length;
-            else if (columns.Length != _amountOfColumns)
-                throw new Exception(
-                    $"{HumanReadableLineNumber(line.Item1)} has {columns.Length} columns but should be {_amountOfColumns}");
-        }
-
-        private string ProcessEntry(Tuple<int, string> column)
-        {
-            var r = column.Item2;
-            r = ReplaceReplacements(r);
-            r = ReplaceEmpty(r);
-            return r;
-        }
-
-        private string ReplaceEmpty(string column)
-        {
-            if (_config.HasEmptyReplacement() && string.IsNullOrWhiteSpace(column))
-                return _config.EmptyReplacement;
-            return column;
-        }
-
-        private string ReplaceReplacements(string column)
-        {
-            if (_config.Replacements == null) return column;
-            return _config.Replacements.Aggregate(column,
-                (current, replacement) => current.Replace(replacement.Key, replacement.Value));
-        }
-
-        private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
 
         internal class InpDataGenerator
         {
