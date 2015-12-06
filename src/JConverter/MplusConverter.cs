@@ -92,7 +92,7 @@ namespace JConverter
             var variables = GetTooLongVariableNames().ToArray();
             if (!variables.Any()) return;
             sb.AppendLine(
-                $"! The following variable names are too long, you should make them shorter:\n {SplitWhenLonger(string.Join(", ", variables), "!      ")}");
+                $"!\tThe following variable names are too long, you should make them shorter:\n{SplitWhenLonger(string.Join(", ", variables), "!\t\t")}");
             sb.AppendLine();
         }
 
@@ -101,7 +101,7 @@ namespace JConverter
             var variables = GetNonUniqueVariableNames().ToArray();
             if (!variables.Any()) return;
             sb.AppendLine(
-                $"! The following variable names are not unique:\n {SplitWhenLonger(string.Join(", ", variables), "!      ")}");
+                $"! The following variable names are not unique:\n{SplitWhenLonger(string.Join(", ", variables), "!      ")}");
             sb.AppendLine();
         }
 
@@ -119,7 +119,7 @@ namespace JConverter
             sb.Append("VARIABLE:    ");
             if (VariableNames.Any())
             {
-                sb.AppendLine($"NAMES ARE {SplitWhenLonger(JoinHeaders())};");
+                sb.AppendLine($"NAMES ARE {SplitWhenLonger(JoinHeaders(), "\t\t")};");
                 sb.AppendLine($"IDVARIABLE IS {VariableNames.First()};");
             }
 
