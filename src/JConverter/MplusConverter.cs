@@ -11,8 +11,8 @@ namespace JConverter
     {
         private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
         private readonly Config _config;
-        private string[] _data;
         private int _amountOfColumns;
+        private string[] _data;
 
         public MplusConverter(string inFile, Config config)
         {
@@ -28,9 +28,13 @@ namespace JConverter
 
         public string InFile { get; }
 
-        public List<string> ColumnHeaders { get; private set; } = new List<string>();
+        public List<string> VariableNames { get; private set; } = new List<string>();
 
-        public IEnumerable<string> GetTooLongHeaders() => ColumnHeaders.Where(x => x.Length > _config.MaxHeaderLength);
+        public IEnumerable<string> GetTooLongVariableNames()
+            => VariableNames.Where(x => x.Length > _config.MaxHeaderLength);
+
+        public IEnumerable<string> GetNonUniqueVariableNames()
+            => VariableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
 
         public void ProcessFile()
         {
@@ -74,7 +78,8 @@ namespace JConverter
         {
             var sb = new StringBuilder();
 
-            AddTooLongVariablesInfo(sb);
+            AddTooLongVariableNamesInfo(sb);
+            AddNonUniqueVariableNamesInfo(sb);
             AddDataInfo(sb);
             AddVariablesInfo(sb);
             AddAnalysisInfo(sb);
@@ -82,12 +87,21 @@ namespace JConverter
             return sb.ToString();
         }
 
-        private void AddTooLongVariablesInfo(StringBuilder sb)
+        private void AddTooLongVariableNamesInfo(StringBuilder sb)
         {
-            var tooLongHeaders = GetTooLongHeaders().ToArray();
-            if (!tooLongHeaders.Any()) return;
+            var variables = GetTooLongVariableNames().ToArray();
+            if (!variables.Any()) return;
             sb.AppendLine(
-                $"! The following headers are too long, you should make them shorter:\n {SplitWhenLonger(string.Join(", ", tooLongHeaders), "!      ")}");
+                $"! The following variable names are too long, you should make them shorter:\n {SplitWhenLonger(string.Join(", ", variables), "!      ")}");
+            sb.AppendLine();
+        }
+
+        private void AddNonUniqueVariableNamesInfo(StringBuilder sb)
+        {
+            var variables = GetNonUniqueVariableNames().ToArray();
+            if (!variables.Any()) return;
+            sb.AppendLine(
+                $"! The following variable names are not unique:\n {SplitWhenLonger(string.Join(", ", variables), "!      ")}");
             sb.AppendLine();
         }
 
@@ -99,14 +113,14 @@ namespace JConverter
 
         private void AddVariablesInfo(StringBuilder sb)
         {
-            if (!ColumnHeaders.Any() && !HasEmptyReplacement())
+            if (!VariableNames.Any() && !HasEmptyReplacement())
                 return;
 
             sb.Append("VARIABLE:    ");
-            if (ColumnHeaders.Any())
+            if (VariableNames.Any())
             {
                 sb.AppendLine($"NAMES ARE {SplitWhenLonger(JoinHeaders())};");
-                sb.AppendLine($"IDVARIABLE IS {ColumnHeaders.First()};");
+                sb.AppendLine($"IDVARIABLE IS {VariableNames.First()};");
             }
 
             if (HasEmptyReplacement())
@@ -115,7 +129,7 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private string JoinHeaders() => string.Join(" ", ColumnHeaders);
+        private string JoinHeaders() => string.Join(" ", VariableNames);
 
         private string SplitWhenLonger(string input, string prefix = "", int length = 80)
             => string.Join(_config.NewLineCharacters, SplitWhenLongerInternal(input, length).Select(x => prefix + x));
@@ -151,7 +165,7 @@ namespace JConverter
                 if (line.Item1 != 0)
                     throw new NotSupportedException(
                         "There are non numerical characters on another line than the first. Line: " + line.Item1);
-                ColumnHeaders = columns.ToList();
+                VariableNames = columns.ToList();
                 return null;
             }
 
@@ -165,7 +179,8 @@ namespace JConverter
             if (line.Item1 == 0)
                 _amountOfColumns = columns.Length;
             else if (columns.Length != _amountOfColumns)
-                throw new Exception($"Line {line.Item1 + 1} has {columns.Length} columns but should be {_amountOfColumns}");
+                throw new Exception(
+                    $"Line {line.Item1 + 1} has {columns.Length} columns but should be {_amountOfColumns}");
         }
 
         private string ProcessEntry(Tuple<int, string> column)

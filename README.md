@@ -26,6 +26,7 @@
 ### Output for the .inp file
 
 - If there are too long variable names (> 8), adds a comment to the top listing them
+- If there are variable names that are not unique, adds a comment to the top listing them
 - Specifies DATA: FILE IS x.dat;
 - Specifies VARIABLE: NAMES ARE ...;
   IDVARIABLE IS ...;
