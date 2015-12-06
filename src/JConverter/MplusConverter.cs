@@ -27,9 +27,9 @@ namespace JConverter
 
         public string InFile { get; }
 
-        public List<string> Headers { get; private set; } = new List<string>();
+        public List<string> ColumnHeaders { get; private set; } = new List<string>();
 
-        public IEnumerable<string> GetTooLongHeaders() => Headers.Where(x => x.Length > _config.MaxHeaderLength);
+        public IEnumerable<string> GetTooLongHeaders() => ColumnHeaders.Where(x => x.Length > _config.MaxHeaderLength);
 
         public void ProcessFile()
         {
@@ -98,14 +98,14 @@ namespace JConverter
 
         private void AddVariablesInfo(StringBuilder sb)
         {
-            if (!Headers.Any() && !HasEmptyReplacement())
+            if (!ColumnHeaders.Any() && !HasEmptyReplacement())
                 return;
 
             sb.Append("VARIABLE:    ");
-            if (Headers.Any())
+            if (ColumnHeaders.Any())
             {
                 sb.AppendLine($"NAMES ARE {SplitWhenLonger(JoinHeaders())};");
-                sb.AppendLine($"IDVARIABLE IS {Headers.First()};");
+                sb.AppendLine($"IDVARIABLE IS {ColumnHeaders.First()};");
             }
 
             if (HasEmptyReplacement())
@@ -114,7 +114,7 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private string JoinHeaders() => string.Join(" ", Headers);
+        private string JoinHeaders() => string.Join(" ", ColumnHeaders);
 
         private string SplitWhenLonger(string input, string prefix = "", int length = 80)
             => string.Join(_config.NewLineCharacters, SplitWhenLongerInternal(input, length).Select(x => prefix + x));
@@ -143,39 +143,39 @@ namespace JConverter
 
         private string TransformLine(Tuple<int, string> line)
         {
-            var split = line.Item2.Split('\t');
-            if (split.Any(x => CharX.IsMatch(x)))
+            var columns = line.Item2.Split('\t');
+            if (columns.Any(x => CharX.IsMatch(x)))
             {
                 if (line.Item1 != 0)
                     throw new NotSupportedException(
                         "There are non numerical characters on another line than the first. Line: " + line.Item1);
-                Headers = split.ToList();
+                ColumnHeaders = columns.ToList();
                 return null;
             }
-            foreach (var entry in split.Select((x, i) => Tuple.Create(i, x)))
-                split[entry.Item1] = ProcessEntry(entry);
-            return string.Join("\t", split);
+            foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
+                columns[entry.Item1] = ProcessEntry(entry);
+            return string.Join("\t", columns);
         }
 
-        private string ProcessEntry(Tuple<int, string> entry)
+        private string ProcessEntry(Tuple<int, string> column)
         {
-            var r = entry.Item2;
+            var r = column.Item2;
             r = ReplaceReplacements(r);
             r = ReplaceEmpty(r);
             return r;
         }
 
-        private string ReplaceEmpty(string entry)
+        private string ReplaceEmpty(string column)
         {
-            if (HasEmptyReplacement() && string.IsNullOrWhiteSpace(entry))
+            if (HasEmptyReplacement() && string.IsNullOrWhiteSpace(column))
                 return _config.EmptyReplacement;
-            return entry;
+            return column;
         }
 
-        private string ReplaceReplacements(string entry)
+        private string ReplaceReplacements(string column)
         {
-            if (_config.Replacements == null) return entry;
-            return _config.Replacements.Aggregate(entry,
+            if (_config.Replacements == null) return column;
+            return _config.Replacements.Aggregate(column,
                 (current, replacement) => current.Replace(replacement.Key, replacement.Value));
         }
 
