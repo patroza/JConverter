@@ -12,6 +12,7 @@ namespace JConverter
         private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
         private readonly Config _config;
         private string[] _data;
+        private int _amountOfColumns;
 
         public MplusConverter(string inFile, Config config)
         {
@@ -144,6 +145,7 @@ namespace JConverter
         private string TransformLine(Tuple<int, string> line)
         {
             var columns = line.Item2.Split('\t');
+            VerifyAmountOfColumns(line, columns);
             if (columns.Any(x => NonNumerical.IsMatch(x)))
             {
                 if (line.Item1 != 0)
@@ -152,9 +154,18 @@ namespace JConverter
                 ColumnHeaders = columns.ToList();
                 return null;
             }
+
             foreach (var entry in columns.Select((x, i) => Tuple.Create(i, x)))
                 columns[entry.Item1] = ProcessEntry(entry);
             return string.Join("\t", columns);
+        }
+
+        private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
+        {
+            if (line.Item1 == 0)
+                _amountOfColumns = columns.Length;
+            else if (columns.Length != _amountOfColumns)
+                throw new Exception($"Line {line.Item1 + 1} has {columns.Length} columns but should be {_amountOfColumns}");
         }
 
         private string ProcessEntry(Tuple<int, string> column)
