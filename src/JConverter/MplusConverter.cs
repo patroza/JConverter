@@ -9,7 +9,7 @@ namespace JConverter
 {
     internal class MplusConverter
     {
-        private static readonly Regex CharX = new Regex(@"\w+", RegexOptions.Compiled);
+        private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
         private readonly Config _config;
         private string[] _data;
 
@@ -144,7 +144,7 @@ namespace JConverter
         private string TransformLine(Tuple<int, string> line)
         {
             var columns = line.Item2.Split('\t');
-            if (columns.Any(x => CharX.IsMatch(x)))
+            if (columns.Any(x => NonNumerical.IsMatch(x)))
             {
                 if (line.Item1 != 0)
                     throw new NotSupportedException(
