@@ -13,6 +13,7 @@ namespace JConverter
         private readonly Config _config;
         private int _amountOfColumns;
         private string[] _data;
+        private List<string> _variableNames = new List<string>();
 
         public MplusConverter(string inFile, Config config)
         {
@@ -28,14 +29,6 @@ namespace JConverter
         public string OutDatFile { get; }
 
         public string InFile { get; }
-
-        public List<string> VariableNames { get; private set; } = new List<string>();
-
-        public IEnumerable<string> GetTooLongVariableNames()
-            => VariableNames.Where(x => x.Length > _config.MaxHeaderLength);
-
-        public IEnumerable<string> GetNonUniqueVariableNames()
-            => VariableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
 
         public void ProcessFile()
         {
@@ -97,6 +90,9 @@ namespace JConverter
             sb.AppendLine();
         }
 
+        private IEnumerable<string> GetTooLongVariableNames()
+            => _variableNames.Where(x => x.Length > _config.MaxHeaderLength);
+
         private void AddNonUniqueVariableNamesInfo(StringBuilder sb)
         {
             var variables = GetNonUniqueVariableNames().ToArray();
@@ -106,7 +102,12 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private string SplitAndJoinVariablesForComment(string[] variables) => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
+        private IEnumerable<string> GetNonUniqueVariableNames()
+            => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
+
+        private string SplitAndJoinVariablesForComment(string[] variables)
+            => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
+
         private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
 
         private void AddDataInfo(StringBuilder sb)
@@ -117,14 +118,14 @@ namespace JConverter
 
         private void AddVariablesInfo(StringBuilder sb)
         {
-            if (!VariableNames.Any() && !HasEmptyReplacement())
+            if (!_variableNames.Any() && !HasEmptyReplacement())
                 return;
 
             sb.Append("VARIABLE:    ");
-            if (VariableNames.Any())
+            if (_variableNames.Any())
             {
                 sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "\t\t\t")};");
-                sb.AppendLine($"IDVARIABLE IS {VariableNames.First()};");
+                sb.AppendLine($"IDVARIABLE IS {_variableNames.First()};");
             }
 
             if (HasEmptyReplacement())
@@ -133,7 +134,7 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private string JoinVariableNames() => string.Join(" ", VariableNames);
+        private string JoinVariableNames() => string.Join(" ", _variableNames);
 
         private string SplitWhenLonger(string input, string prefix = "", int length = 80)
             => string.Join(_config.NewLineCharacters, SplitWhenLongerInternal(input, length).Select(x => prefix + x));
@@ -169,7 +170,7 @@ namespace JConverter
                 if (line.Item1 != 0)
                     throw new NotSupportedException(
                         $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
-                VariableNames = columns.ToList();
+                _variableNames = columns.ToList();
                 return null;
             }
 
