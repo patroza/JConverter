@@ -197,7 +197,7 @@ namespace JConverter
                 => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
 
             private string SplitAndJoinVariablesForComment(string[] variables)
-                => SplitWhenLonger(JoinVariableNamesForComment(variables), "!{_config.DefaultIndent}", _config.MaxLineLength);
+                => SplitWhenLonger(JoinVariableNamesForComment(variables), $"!{_config.DefaultIndent}", _config.MaxLineLength);
 
             private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
 
@@ -215,7 +215,7 @@ namespace JConverter
                 sb.Append("VARIABLE:\n");
                 if (_variableNames.Any())
                 {
-                    sb.AppendLine($"{_config.DefaultIndent}NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "{_config.DefaultIndent}\t", _config.MaxLineLength)};");
+                    sb.AppendLine($"{_config.DefaultIndent}NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), $"{_config.DefaultIndent}\t", _config.MaxLineLength)};");
                     sb.AppendLine($"{_config.DefaultIndent}IDVARIABLE IS {_variableNames.First()};");
                 }
 
