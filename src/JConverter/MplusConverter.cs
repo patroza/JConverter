@@ -35,6 +35,7 @@ namespace JConverter
             ConfirmInputFileExists();
             ConfirmOutFilesDontExist();
             ReadInputFile();
+            TransformData();
             CreateTransformedDatFile();
             CreateInpFile();
         }
@@ -54,99 +55,24 @@ namespace JConverter
 
         private void ReadInputFile() => _data = File.ReadAllLines(InFile);
 
-        private void CreateTransformedDatFile() => File.WriteAllText(OutDatFile, TransformData());
-
-        private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
-
-        private string GenerateInpData()
-        {
-            var sb = new StringBuilder();
-
-            AddTooLongVariableNamesInfo(sb);
-            AddNonUniqueVariableNamesInfo(sb);
-            AddDataInfo(sb);
-            AddVariablesInfo(sb);
-            AddAnalysisInfo(sb);
-
-            return sb.ToString();
-        }
-
-        private void AddTooLongVariableNamesInfo(StringBuilder sb)
-        {
-            var variables = GetTooLongVariableNames().ToArray();
-            if (!variables.Any()) return;
-            sb.AppendLine(
-                $"!\tThe following variable names are too long, you should make them shorter:\n{SplitAndJoinVariablesForComment(variables)}");
-            sb.AppendLine();
-        }
-
-        private IEnumerable<string> GetTooLongVariableNames()
-            => _variableNames.Where(x => x.Length > _config.MaxHeaderLength);
-
-        private void AddNonUniqueVariableNamesInfo(StringBuilder sb)
-        {
-            var variables = GetNonUniqueVariableNames().ToArray();
-            if (!variables.Any()) return;
-            sb.AppendLine(
-                $"!\tThe following variable names are not unique:\n{SplitAndJoinVariablesForComment(variables)}");
-            sb.AppendLine();
-        }
-
-        private IEnumerable<string> GetNonUniqueVariableNames()
-            => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
-
-        private string SplitAndJoinVariablesForComment(string[] variables)
-            => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
-
-        private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
-
-        private void AddDataInfo(StringBuilder sb)
-        {
-            sb.AppendLine($"DATA:    FILE IS {new FileInfo(OutDatFile).Name};");
-            sb.AppendLine();
-        }
-
-        private void AddVariablesInfo(StringBuilder sb)
-        {
-            if (!_variableNames.Any() && !HasEmptyReplacement())
-                return;
-
-            sb.Append("VARIABLE:    ");
-            if (_variableNames.Any())
-            {
-                sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "\t\t\t")};");
-                sb.AppendLine($"IDVARIABLE IS {_variableNames.First()};");
-            }
-
-            if (HasEmptyReplacement())
-                sb.AppendLine($"MISSING ARE ALL ({_config.EmptyReplacement});");
-
-            sb.AppendLine();
-        }
-
-        private string JoinVariableNames() => string.Join(" ", _variableNames);
-
-        private string SplitWhenLonger(string input, string prefix = "", int length = 80)
-            => string.Join(_config.NewLineCharacters, SplitWhenLongerInternal(input, length).Select(x => prefix + x));
-
-        private static IEnumerable<string> SplitWhenLongerInternal(string input, int length = 80)
-            => Regex.Split(input, @"(.{1," + length + @"})(?:\s|$)")
-                .Where(x => x.Length > 0);
-
-        private void AddAnalysisInfo(StringBuilder sb)
-        {
-            sb.AppendLine($"ANALYSIS: TYPE IS {_config.AnalysisType};");
-            sb.AppendLine();
-        }
-
-        private bool HasEmptyReplacement() => _config.EmptyReplacement != null;
-
-        private string TransformData()
+        private void TransformData()
         {
             foreach (var lInfo in _data.Select((x, i) => Tuple.Create(i, x)))
                 _data[lInfo.Item1] = TransformLine(lInfo);
-            return string.Join(_config.NewLineCharacters, _data.Where(x => x != null));
         }
+
+        private void CreateTransformedDatFile() => File.WriteAllText(OutDatFile, GenerateTransformedDatData());
+
+        private string GenerateTransformedDatData()
+            => string.Join(_config.NewLineCharacters, _data.Where(x => x != null));
+
+        private void CreateInpFile()
+            =>
+                File.WriteAllText(OutInpFile,
+                    GenerateInpData());
+
+        private string GenerateInpData()
+            => new InpDataGenerator(_config, _variableNames, new FileInfo(OutDatFile).Name).GenerateInpData();
 
         private string TransformLine(Tuple<int, string> line)
         {
@@ -185,7 +111,7 @@ namespace JConverter
 
         private string ReplaceEmpty(string column)
         {
-            if (HasEmptyReplacement() && string.IsNullOrWhiteSpace(column))
+            if (_config.HasEmptyReplacement() && string.IsNullOrWhiteSpace(column))
                 return _config.EmptyReplacement;
             return column;
         }
@@ -199,6 +125,103 @@ namespace JConverter
 
         private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
 
+        internal class InpDataGenerator
+        {
+            private readonly Config _config;
+            private readonly string _outDatFile;
+            private readonly List<string> _variableNames;
+
+            public InpDataGenerator(Config config, List<string> variableNames, string outDatFile)
+            {
+                _config = config;
+                _variableNames = variableNames;
+                _outDatFile = outDatFile;
+            }
+
+            public string GenerateInpData()
+            {
+                var sb = new StringBuilder();
+
+                AddTooLongVariableNamesInfo(sb);
+                AddNonUniqueVariableNamesInfo(sb);
+                AddDataInfo(sb);
+                AddVariablesInfo(sb);
+                AddAnalysisInfo(sb);
+
+                return sb.ToString();
+            }
+
+            private void AddTooLongVariableNamesInfo(StringBuilder sb)
+            {
+                var variables = GetTooLongVariableNames().ToArray();
+                if (!variables.Any()) return;
+                sb.AppendLine(
+                    $"!\tThe following variable names are too long, you should make them shorter:\n{SplitAndJoinVariablesForComment(variables)}");
+                sb.AppendLine();
+            }
+
+            private IEnumerable<string> GetTooLongVariableNames()
+                => _variableNames.Where(x => x.Length > _config.MaxHeaderLength);
+
+            private void AddNonUniqueVariableNamesInfo(StringBuilder sb)
+            {
+                var variables = GetNonUniqueVariableNames().ToArray();
+                if (!variables.Any()) return;
+                sb.AppendLine(
+                    $"!\tThe following variable names are not unique:\n{SplitAndJoinVariablesForComment(variables)}");
+                sb.AppendLine();
+            }
+
+            private IEnumerable<string> GetNonUniqueVariableNames()
+                => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
+
+            private string SplitAndJoinVariablesForComment(string[] variables)
+                => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
+
+            private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
+
+            private void AddDataInfo(StringBuilder sb)
+            {
+                sb.AppendLine($"DATA:    FILE IS {_outDatFile};");
+                sb.AppendLine();
+            }
+
+            private void AddVariablesInfo(StringBuilder sb)
+            {
+                if (!_variableNames.Any() && !_config.HasEmptyReplacement())
+                    return;
+
+                sb.Append("VARIABLE:    ");
+                if (_variableNames.Any())
+                {
+                    sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "\t\t\t")};");
+                    sb.AppendLine($"IDVARIABLE IS {_variableNames.First()};");
+                }
+
+                if (_config.HasEmptyReplacement())
+                    sb.AppendLine($"MISSING ARE ALL ({_config.EmptyReplacement});");
+
+                sb.AppendLine();
+            }
+
+            private string JoinVariableNames() => string.Join(" ", _variableNames);
+
+            private string SplitWhenLonger(string input, string prefix = "", int length = 80)
+                =>
+                    string.Join(_config.NewLineCharacters,
+                        SplitWhenLongerInternal(input, length).Select(x => prefix + x));
+
+            private static IEnumerable<string> SplitWhenLongerInternal(string input, int length = 80)
+                => Regex.Split(input, @"(.{1," + length + @"})(?:\s|$)")
+                    .Where(x => x.Length > 0);
+
+            private void AddAnalysisInfo(StringBuilder sb)
+            {
+                sb.AppendLine($"ANALYSIS: TYPE IS {_config.AnalysisType};");
+                sb.AppendLine();
+            }
+        }
+
         internal class Config
         {
             public IDictionary<string, string> Replacements { get; } = new Dictionary<string, string> {{".", ","}};
@@ -206,6 +229,7 @@ namespace JConverter
             public int MaxHeaderLength { get; set; } = 8;
             public string AnalysisType { get; set; } = "BASIC";
             public string NewLineCharacters { get; set; } = Environment.NewLine;
+            public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
     }
 }
