@@ -93,7 +93,7 @@ namespace JConverter
             var variables = GetTooLongVariableNames().ToArray();
             if (!variables.Any()) return;
             sb.AppendLine(
-                $"!\tThe following variable names are too long, you should make them shorter:\n{SplitWhenLonger(string.Join(", ", variables), "!\t\t")}");
+                $"!\tThe following variable names are too long, you should make them shorter:\n{SplitAndJoinVariablesForComment(variables)}");
             sb.AppendLine();
         }
 
@@ -102,9 +102,12 @@ namespace JConverter
             var variables = GetNonUniqueVariableNames().ToArray();
             if (!variables.Any()) return;
             sb.AppendLine(
-                $"! The following variable names are not unique:\n{SplitWhenLonger(string.Join(", ", variables), "!      ")}");
+                $"!\tThe following variable names are not unique:\n{SplitAndJoinVariablesForComment(variables)}");
             sb.AppendLine();
         }
+
+        private string SplitAndJoinVariablesForComment(string[] variables) => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
+        private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
 
         private void AddDataInfo(StringBuilder sb)
         {
@@ -120,7 +123,7 @@ namespace JConverter
             sb.Append("VARIABLE:    ");
             if (VariableNames.Any())
             {
-                sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinHeaders(), "\t\t\t")};");
+                sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "\t\t\t")};");
                 sb.AppendLine($"IDVARIABLE IS {VariableNames.First()};");
             }
 
@@ -130,7 +133,7 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private string JoinHeaders() => string.Join(" ", VariableNames);
+        private string JoinVariableNames() => string.Join(" ", VariableNames);
 
         private string SplitWhenLonger(string input, string prefix = "", int length = 80)
             => string.Join(_config.NewLineCharacters, SplitWhenLongerInternal(input, length).Select(x => prefix + x));
