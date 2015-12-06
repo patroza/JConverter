@@ -22,7 +22,7 @@
 
 - Replace empty values by -999
 - Replace dot (.) by comma (,)
-- Remove variable headers row
+- Remove variable/column names row
 
 ### Conversion for the .inp file
 
