@@ -16,6 +16,7 @@
   If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
 - Each line must have an equal amount of columns. Otherwise an error is raised.
 - The default analysis type is BASIC.
+- Output files (.dat and .inp) should not exist already. Otherwise an error is raised.
 - Spaces in output file names are replaced by underscores (_)
 
 ### Conversion for the .dat file
