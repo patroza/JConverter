@@ -10,20 +10,21 @@
 
 ## Conversion details
 
+### General
+
+- If the first row contains alphabetical characters, then it is assumed to be the variable headers.
+  If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
+- Each line must have an equal amount of columns. Otherwise an error is raised.
+- The default analysis type is BASIC.
+- Spaces in output file names are replaced by underscores (_)
+
 ### Conversion for the .dat file
 
 - Replace empty values by -999
 - Replace dot (.) by comma (,)
 - Remove variable headers row
 
-### Assumptions made
-
-- If the first row contains alphabetical characters, then it is assumed to be the variable headers.
-  If any other row contains alphabetical characters, an error is raised, as Mplus does not support this.
-- Each line must have an equal amount of columns. Otherwise an error is raised.
-- The default analysis type is BASIC.
-
-### Output for the .inp file
+### Conversion for the .inp file
 
 - If there are too long variable names (> 8), adds a comment to the top listing them
 - If there are variable names that are not unique, adds a comment to the top listing them
