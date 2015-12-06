@@ -165,7 +165,7 @@ namespace JConverter
             {
                 if (line.Item1 != 0)
                     throw new NotSupportedException(
-                        "There are non numerical characters on another line than the first. Line: " + line.Item1);
+                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
                 VariableNames = columns.ToList();
                 return null;
             }
@@ -181,7 +181,7 @@ namespace JConverter
                 _amountOfColumns = columns.Length;
             else if (columns.Length != _amountOfColumns)
                 throw new Exception(
-                    $"Line {line.Item1 + 1} has {columns.Length} columns but should be {_amountOfColumns}");
+                    $"{HumanReadableLineNumber(line.Item1)} has {columns.Length} columns but should be {_amountOfColumns}");
         }
 
         private string ProcessEntry(Tuple<int, string> column)
@@ -205,6 +205,8 @@ namespace JConverter
             return _config.Replacements.Aggregate(column,
                 (current, replacement) => current.Replace(replacement.Key, replacement.Value));
         }
+
+        private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
 
         internal class Config
         {
