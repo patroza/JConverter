@@ -119,7 +119,7 @@ namespace JConverter
             sb.Append("VARIABLE:    ");
             if (VariableNames.Any())
             {
-                sb.AppendLine($"NAMES ARE {SplitWhenLonger(JoinHeaders(), "\t\t")};");
+                sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinHeaders(), "\t\t\t")};");
                 sb.AppendLine($"IDVARIABLE IS {VariableNames.First()};");
             }
 
