@@ -197,13 +197,13 @@ namespace JConverter
                 => _variableNames.GroupBy(x => x.ToLower()).Where(x => x.Count() > 1).Select(x => x.First());
 
             private string SplitAndJoinVariablesForComment(string[] variables)
-                => SplitWhenLonger(JoinVariableNamesForComment(variables), "!\t\t");
+                => SplitWhenLonger(JoinVariableNamesForComment(variables), "!{_config.DefaultIndent}", _config.MaxLineLength);
 
             private static string JoinVariableNamesForComment(string[] variables) => string.Join(", ", variables);
 
             private void AddDataInfo(StringBuilder sb)
             {
-                sb.AppendLine($"DATA:    FILE IS {_outDatFile};");
+                sb.AppendLine($"DATA:\n{_config.DefaultIndent}FILE IS {_outDatFile};");
                 sb.AppendLine();
             }
 
@@ -212,15 +212,15 @@ namespace JConverter
                 if (!_variableNames.Any() && !_config.HasEmptyReplacement())
                     return;
 
-                sb.Append("VARIABLE:    ");
+                sb.Append("VARIABLE:\n");
                 if (_variableNames.Any())
                 {
-                    sb.AppendLine($"NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "\t\t\t")};");
-                    sb.AppendLine($"IDVARIABLE IS {_variableNames.First()};");
+                    sb.AppendLine($"{_config.DefaultIndent}NAMES ARE \n{SplitWhenLonger(JoinVariableNames(), "{_config.DefaultIndent}\t", _config.MaxLineLength)};");
+                    sb.AppendLine($"{_config.DefaultIndent}IDVARIABLE IS {_variableNames.First()};");
                 }
 
                 if (_config.HasEmptyReplacement())
-                    sb.AppendLine($"MISSING ARE ALL ({_config.EmptyReplacement});");
+                    sb.AppendLine($"{_config.DefaultIndent}MISSING ARE ALL ({_config.EmptyReplacement});");
 
                 sb.AppendLine();
             }
@@ -238,7 +238,7 @@ namespace JConverter
 
             private void AddAnalysisInfo(StringBuilder sb)
             {
-                sb.AppendLine($"ANALYSIS: TYPE IS {_config.AnalysisType};");
+                sb.AppendLine($"ANALYSIS:\n{_config.DefaultIndent}TYPE IS {_config.AnalysisType};");
                 sb.AppendLine();
             }
         }
@@ -248,8 +248,10 @@ namespace JConverter
             public IDictionary<string, string> Replacements { get; } = new Dictionary<string, string> {{".", ","}};
             public string EmptyReplacement { get; } = "-999";
             public int MaxHeaderLength { get; set; } = 8;
+            public int MaxLineLength { get; set; } = 80;
             public string AnalysisType { get; set; } = "BASIC";
             public string NewLineCharacters { get; set; } = Environment.NewLine;
+            public string DefaultIndent { get; set; } = "\t\t";
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
     }
