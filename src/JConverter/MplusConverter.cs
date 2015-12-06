@@ -52,21 +52,11 @@ namespace JConverter
                 throw new Exception("The .inp file already exists, please delete it first: " + OutInpFile);
         }
 
-        private void ReadInputFile()
-        {
-            _data = File.ReadAllLines(InFile);
-        }
+        private void ReadInputFile() => _data = File.ReadAllLines(InFile);
 
-        private void CreateTransformedDatFile()
-        {
-            File.WriteAllText(OutDatFile, TransformData());
-        }
+        private void CreateTransformedDatFile() => File.WriteAllText(OutDatFile, TransformData());
 
-
-        private void CreateInpFile()
-        {
-            File.WriteAllText(OutInpFile, GenerateInpData());
-        }
+        private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
 
         private string GenerateInpData()
         {
@@ -149,10 +139,7 @@ namespace JConverter
             sb.AppendLine();
         }
 
-        private bool HasEmptyReplacement()
-        {
-            return _config.EmptyReplacement != null;
-        }
+        private bool HasEmptyReplacement() => _config.EmptyReplacement != null;
 
         private string TransformData()
         {
