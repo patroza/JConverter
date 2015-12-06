@@ -29,7 +29,8 @@
 - If there are too long variable names (> 8), adds a comment to the top listing them
 - If there are variable names that are not unique, adds a comment to the top listing them
 - Specifies DATA: FILE IS x.dat;
-- Specifies VARIABLE: NAMES ARE ...;
+- Specifies VARIABLE:
+ - NAMES ARE ...;
  - IDVARIABLE IS ...;  (The default is the first column)
  - MISSING ARE ALL (...);
 - Specifies ANALYSIS: TYPE IS ...;  (The default is BASIC)
