@@ -12,13 +12,16 @@ namespace JConverter
     public class MplusConverter
     {
         private readonly Config _config;
+        private readonly ILogger _logger;
         private SpssDataTransformer _spssDataTransformer;
 
-        public MplusConverter(IAbsoluteFilePath inFile, Config config)
+        public MplusConverter(IAbsoluteFilePath inFile, Config config, ILogger logger)
         {
             Contract.Requires<ArgumentNullException>(inFile != null);
             Contract.Requires<ArgumentNullException>(config != null);
+            Contract.Requires<ArgumentNullException>(logger != null);
             _config = config;
+            _logger = logger;
             InFile = inFile;
             OutDatFile = GenerateOutFilePath(".dat");
             OutInpFile = GenerateOutFilePath(".inp");
@@ -63,7 +66,7 @@ namespace JConverter
         private IEnumerable<string> ParseAndTransformData()
         {
             var data = ReadInputFile();
-            _spssDataTransformer = new SpssDataTransformer(_config, data);
+            _spssDataTransformer = new SpssDataTransformer(_config, _logger, data);
             _spssDataTransformer.TransformData();
             return data;
         }
@@ -80,19 +83,21 @@ namespace JConverter
 
         private string GenerateInpData()
             =>
-                new InpDataGenerator(_config, _spssDataTransformer.VariableNames, OutDatFile.FileName)
+                new InpDataGenerator(_config, _logger, _spssDataTransformer.VariableNames, OutDatFile.FileName)
                     .GenerateInpData();
 
         internal class SpssDataTransformer
         {
             private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
             private readonly Config _config;
+            private readonly ILogger _logger;
             private readonly string[] _data;
             private int _amountOfColumns;
 
-            public SpssDataTransformer(Config config, string[] data)
+            public SpssDataTransformer(Config config, ILogger logger, string[] data)
             {
                 _config = config;
+                _logger = logger;
                 _data = data;
             }
 
@@ -126,12 +131,14 @@ namespace JConverter
             {
                 if (line.Item1 != 0)
                 {
-                    if (_config.IgnoreNonNumerical)
-                        return ProcessValueLine(columns);
                     var info = GetContextInfo(line, columns);
-                    throw new NonNumericalException(
-                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}",
-                        info);
+                    var message = $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}";
+                    if (_config.IgnoreNonNumerical)
+                    {
+                        _logger.Write(message);
+                        return ProcessValueLine(columns);
+                    }
+                    throw new NonNumericalException(message, info);
                 }
                 VariableNames = columns.ToList();
                 return null;
@@ -192,12 +199,14 @@ namespace JConverter
         internal class InpDataGenerator
         {
             private readonly Config _config;
+            private readonly ILogger _logger;
             private readonly string _outDatFile;
             private readonly List<string> _variableNames;
 
-            public InpDataGenerator(Config config, List<string> variableNames, string outDatFile)
+            public InpDataGenerator(Config config, ILogger logger, List<string> variableNames, string outDatFile)
             {
                 _config = config;
+                _logger = logger;
                 _variableNames = variableNames;
                 _outDatFile = outDatFile;
             }
@@ -307,6 +316,11 @@ namespace JConverter
 
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
+    }
+
+    public interface ILogger
+    {
+        void Write(string data);
     }
 
     public class NonNumericalException : NotSupportedException

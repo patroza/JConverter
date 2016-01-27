@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using FakeItEasy;
 using FluentAssertions;
 using NDepend.Path;
 using NUnit.Framework;
@@ -42,20 +43,27 @@ namespace JConverter.Tests.Unit
 
         public class ConstructorTest : BaseTest<MplusConverter>
         {
+            private static ILogger CreateLogger() => A.Fake<ILogger>();
+
+            private static MplusConverter.Config CreateConfig() => new MplusConverter.Config();
+
             [Test]
             public void CanCreate()
             {
-                SUT = new MplusConverter(TestFilePath, new MplusConverter.Config());
+                SUT = new MplusConverter(TestFilePath, CreateConfig(), CreateLogger());
                 SUT.Should().BeOfType<MplusConverter>();
             }
 
             [Test]
             public void CannotCreateWithNullArguments()
             {
-                Action act = () => SUT = new MplusConverter(null, new MplusConverter.Config());
+                Action act = () => SUT = new MplusConverter(null, CreateConfig(), CreateLogger());
                 act.ShouldThrow<ArgumentNullException>();
 
-                act = () => SUT = new MplusConverter(TestFilePath, null);
+                act = () => SUT = new MplusConverter(TestFilePath, null, CreateLogger());
+                act.ShouldThrow<ArgumentNullException>();
+
+                act = () => SUT = new MplusConverter(TestFilePath, CreateConfig(), null);
                 act.ShouldThrow<ArgumentNullException>();
             }
         }
@@ -108,7 +116,8 @@ namespace JConverter.Tests.Unit
             try
             {
                 ExceptionTest();
-            } catch (NonNumericalException ex)
+            }
+            catch (NonNumericalException ex)
             {
                 var info = ex.Context;
                 info.LineNumber.Should().Be(1);
