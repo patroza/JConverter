@@ -15,11 +15,12 @@ namespace JConverter.Tests.Unit
             if (TestPath.Exists) TestPath.DirectoryInfo.Delete(true);
             Directory.CreateDirectory(TestPath.ToString());
             Fixture.Inject(TestFilePath);
+            Fixture.Inject(new MplusConverter.Config());
             BuildFixture();
         }
 
         [TearDown]
-        public void Teardown()
+        public void TearDown()
         {
             if (TestPath.Exists) TestPath.DirectoryInfo.Delete(true);
         }
@@ -37,7 +38,7 @@ namespace JConverter.Tests.Unit
         private static void WriteOutFile(IAbsoluteFilePath outFile, string outType)
             => File.WriteAllText(outFile.ToString(), "test out " + outType);
 
-        private void WriteTestInputFile() => File.WriteAllText(SUT.InFile.ToString(), "test in");
+        private void WriteTestInputFile(string content = "test in") => File.WriteAllText(SUT.InFile.ToString(), content);
 
         public class ConstructorTest : BaseTest<MplusConverter>
         {
@@ -60,14 +61,14 @@ namespace JConverter.Tests.Unit
         }
 
         [Test]
-        public void WhenProcessingFileAndInputFileDoesNotExist()
+        public void WhenProcessingFileAndInputFileDoesNotExistShouldThrowError()
         {
             ExceptionTest = () => SUT.ProcessFile();
             ExceptionTest.ShouldThrow<FileNotFoundException>();
         }
 
         [Test]
-        public void WhenProcessingFileAndOutputDatFileExist()
+        public void WhenProcessingFileAndOutputDatFileExistShouldThrowError()
         {
             WriteTestInputFile();
             WriteOutFile(SUT.OutDatFile, "dat");
@@ -76,7 +77,7 @@ namespace JConverter.Tests.Unit
         }
 
         [Test]
-        public void WhenProcessingFileAndOutputInpFileExist()
+        public void WhenProcessingFileAndOutputInpFileExistShouldThrowError()
         {
             WriteTestInputFile();
             WriteOutFile(SUT.OutInpFile, "inp");
@@ -85,11 +86,35 @@ namespace JConverter.Tests.Unit
         }
 
         [Test]
-        public void WhenProcessingFileOutputFilesShouldExist() {
+        public void WhenProcessingFileOutputFilesShouldExist()
+        {
             WriteTestInputFile();
             SUT.ProcessFile();
             SUT.OutInpFile.Exists.Should().BeTrue();
             SUT.OutDatFile.Exists.Should().BeTrue();
+        }
+
+
+        [Test]
+        public void WhenProcessingFileWithMultipleRowsOfNonNumericalShouldThrowError()
+        {
+            WriteTestInputFile(
+                @"Header1	Header2
+0,00001	NotAHeader
+");
+            ExceptionTest = () => SUT.ProcessFile();
+            ExceptionTest.ShouldThrow<NonNumericalException>();
+
+            try
+            {
+                ExceptionTest();
+            } catch (NonNumericalException ex)
+            {
+                ex.LineNumber.Should().Be(1);
+                ex.Column.Should().Be(2);
+                ex.Context.Should().Be("0,00001\tNotAHeader");
+                ex.FirstMatch.Should().Be("NotAHeader");
+            }
         }
     }
 }
