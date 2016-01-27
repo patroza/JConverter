@@ -113,10 +113,12 @@ namespace JConverter
             {
                 var columns = line.Item2.Split(_config.ColumnSplitter);
                 VerifyAmountOfColumns(line, columns);
-                return columns.Any(x => NonNumerical.IsMatch(x))
+                return columns.Any(IsNotNumerical)
                     ? ProcessVariableNamesLine(line, columns)
                     : ProcessValueLine(columns);
             }
+
+            private static bool IsNotNumerical(string x) => NonNumerical.IsMatch(x);
 
             private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
             {
@@ -144,7 +146,7 @@ namespace JConverter
 
             private static ContextInfo GetContextInfo(Tuple<int, string> line, string[] columns)
             {
-                var firstMatch = columns.First(x => NonNumerical.IsMatch(x));
+                var firstMatch = columns.First(IsNotNumerical);
                 return new ContextInfo
                 {
                     FirstMatch = firstMatch,
