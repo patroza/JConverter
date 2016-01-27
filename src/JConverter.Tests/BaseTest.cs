@@ -7,11 +7,19 @@ namespace JConverter.Tests
     [TestFixture]
     public abstract class BaseTest
     {
-        protected Fixture Fixturer { get; } = new Fixture();
+        protected Fixture Fixture { get; } = new Fixture();
 
         protected BaseTest()
         {
-            Fixturer.Customize(new AutoFakeItEasyCustomization());
+            Fixture.Customize(new AutoFakeItEasyCustomization());
         }
+    }
+
+    public abstract class BaseTest<T> : BaseTest
+    {
+        // ReSharper disable once InconsistentNaming
+        public T SUT { get; set; }
+
+        protected virtual void BuildFixture() => SUT = Fixture.Create<T>();
     }
 }
