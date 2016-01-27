@@ -88,7 +88,8 @@ namespace JConverter
 
         internal class SpssDataTransformer
         {
-            private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
+            private static readonly string dotNotation = ",.";
+            private static readonly Regex NumericalInclScientific = new Regex(@"^(-?\d+)[" + dotNotation + @"]?\d+(e-|e\+|e|\d+)\d+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             private readonly Config _config;
             private readonly ILogger _logger;
             private readonly string[] _data;
@@ -118,7 +119,7 @@ namespace JConverter
                     : ProcessValueLine(columns);
             }
 
-            private static bool IsNotNumerical(string x) => NonNumerical.IsMatch(x);
+            private static bool IsNotNumerical(string x) => !NumericalInclScientific.IsMatch(x);
 
             private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
             {
@@ -303,7 +304,7 @@ namespace JConverter
 
         public class Config
         {
-            public IDictionary<string, string> Replacements { get; set; } = new Dictionary<string, string> {{".", ","}};
+            public IDictionary<string, string> Replacements { get; set; } = new Dictionary<string, string> {{",", "."}};
             public string EmptyReplacement { get; set; } = "-999";
             public int MaxHeaderLength { get; set; } = 8;
             public int MaxLineLength { get; set; } = 80;
