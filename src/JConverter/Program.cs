@@ -1,5 +1,6 @@
 ﻿using System;
 using JConverter.Properties;
+using NDepend.Path;
 
 namespace JConverter
 {
@@ -15,7 +16,7 @@ namespace JConverter
             try
             {
                 foreach (var fn in args)
-                    new MplusConverter(fn, config).ProcessFile();
+                    new MplusConverter(fn.ToAbsoluteFilePath(), config).ProcessFile();
             }
             catch (Exception ex)
             {

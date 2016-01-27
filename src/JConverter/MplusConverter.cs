@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using NDepend.Path;
 
 namespace JConverter
 {
@@ -13,22 +14,27 @@ namespace JConverter
         private readonly Config _config;
         private SpssDataTransformer _spssDataTransformer;
 
-        public MplusConverter(string inFile, Config config)
+        public MplusConverter(IAbsoluteFilePath inFile, Config config)
         {
             Contract.Requires<ArgumentNullException>(inFile != null);
             Contract.Requires<ArgumentNullException>(config != null);
             _config = config;
             InFile = inFile;
-            var inFileProcessed = InFile.Replace(" ", "_");
-            OutDatFile = inFileProcessed + ".dat";
-            OutInpFile = inFileProcessed + ".inp";
+            OutDatFile = GenerateOutFilePath(".dat");
+            OutInpFile = GenerateOutFilePath(".inp");
         }
 
-        public string OutInpFile { get; }
+        private IAbsoluteFilePath GenerateOutFilePath(string ext)
+        {
+            var inFileProcessed = InFile.ToString().Replace(" ", "_");
+            return (inFileProcessed + ext).ToAbsoluteFilePath();
+        }
 
-        public string OutDatFile { get; }
+        public IAbsoluteFilePath OutInpFile { get; }
 
-        public string InFile { get; }
+        public IAbsoluteFilePath OutDatFile { get; }
+
+        public IAbsoluteFilePath InFile { get; }
 
         public void ProcessFile()
         {
@@ -41,14 +47,14 @@ namespace JConverter
 
         private void ConfirmInputFileExists()
         {
-            if (!File.Exists(InFile)) throw new Exception("The file does not exist: " + InFile);
+            if (!InFile.Exists) throw new Exception("The file does not exist: " + InFile);
         }
 
         private void ConfirmOutFilesDontExist()
         {
-            if (File.Exists(OutDatFile))
+            if (OutDatFile.Exists)
                 throw new Exception("The .dat file already exists, please delete it first: " + OutDatFile);
-            if (File.Exists(OutInpFile))
+            if (OutInpFile.Exists)
                 throw new Exception("The .inp file already exists, please delete it first: " + OutInpFile);
         }
 
@@ -60,19 +66,19 @@ namespace JConverter
             return data;
         }
 
-        private string[] ReadInputFile() => File.ReadAllLines(InFile);
+        private string[] ReadInputFile() => File.ReadAllLines(InFile.ToString());
 
         private void CreateTransformedDatFile(IEnumerable<string> data)
-            => File.WriteAllText(OutDatFile, GenerateTransformedDatData(data));
+            => File.WriteAllText(OutDatFile.ToString(), GenerateTransformedDatData(data));
 
         private string GenerateTransformedDatData(IEnumerable<string> data)
             => string.Join(_config.NewLine, data.Where(x => x != null));
 
-        private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
+        private void CreateInpFile() => File.WriteAllText(OutInpFile.ToString(), GenerateInpData());
 
         private string GenerateInpData()
             =>
-                new InpDataGenerator(_config, _spssDataTransformer.VariableNames, new FileInfo(OutDatFile).Name)
+                new InpDataGenerator(_config, _spssDataTransformer.VariableNames, OutDatFile.FileName)
                     .GenerateInpData();
 
         internal class SpssDataTransformer
