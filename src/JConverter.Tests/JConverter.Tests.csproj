@@ -91,10 +91,17 @@
     <Compile Include="BaseTest.cs" />
     <Compile Include="LocalAddin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Unit\MplusConverterTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JConverter\JConverter.csproj">
+      <Project>{a20a6188-03ac-410f-9956-de60385dab05}</Project>
+      <Name>JConverter</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

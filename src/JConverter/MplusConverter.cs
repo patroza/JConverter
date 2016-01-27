@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,13 +8,15 @@ using System.Text.RegularExpressions;
 
 namespace JConverter
 {
-    internal class MplusConverter
+    public class MplusConverter
     {
         private readonly Config _config;
         private SpssDataTransformer _spssDataTransformer;
 
         public MplusConverter(string inFile, Config config)
         {
+            Contract.Requires<ArgumentNullException>(inFile != null);
+            Contract.Requires<ArgumentNullException>(config != null);
             _config = config;
             InFile = inFile;
             var inFileProcessed = InFile.Replace(" ", "_");
@@ -260,7 +263,7 @@ namespace JConverter
             }
         }
 
-        internal class Config
+        public class Config
         {
             public IDictionary<string, string> Replacements { get; set; } = new Dictionary<string, string> {{".", ","}};
             public string EmptyReplacement { get; set; } = "-999";
