@@ -133,11 +133,9 @@ namespace JConverter
                 {
                     var info = GetContextInfo(line, columns);
                     var message = $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}";
+                    _logger.Write(message);
                     if (_config.IgnoreNonNumerical)
-                    {
-                        _logger.Write(message);
                         return ProcessValueLine(columns);
-                    }
                     throw new NonNumericalException(message, info);
                 }
                 VariableNames = columns.ToList();
