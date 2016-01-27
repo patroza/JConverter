@@ -47,15 +47,15 @@ namespace JConverter
 
         private void ConfirmInputFileExists()
         {
-            if (!InFile.Exists) throw new Exception("The file does not exist: " + InFile);
+            if (!InFile.Exists) throw new FileNotFoundException("The file does not exist: " + InFile);
         }
 
         private void ConfirmOutFilesDontExist()
         {
             if (OutDatFile.Exists)
-                throw new Exception("The .dat file already exists, please delete it first: " + OutDatFile);
+                throw new InvalidOperationException("The .dat file already exists, please delete it first: " + OutDatFile);
             if (OutInpFile.Exists)
-                throw new Exception("The .inp file already exists, please delete it first: " + OutInpFile);
+                throw new InvalidOperationException("The .inp file already exists, please delete it first: " + OutInpFile);
         }
 
         private IEnumerable<string> ParseAndTransformData()
