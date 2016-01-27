@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System;
+using NUnit.Framework;
 using Ploeh.AutoFixture;
 using Ploeh.AutoFixture.AutoFakeItEasy;
 
@@ -8,6 +9,7 @@ namespace JConverter.Tests
     public abstract class BaseTest
     {
         protected Fixture Fixture { get; } = new Fixture();
+        protected Action ExceptionTest { get; set; }
 
         protected BaseTest()
         {
