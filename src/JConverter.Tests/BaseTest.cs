@@ -8,6 +8,12 @@ namespace JConverter.Tests
     [TestFixture]
     public abstract class BaseTest
     {
+        [TearDown]
+        public void BaseTearDown()
+        {
+            ExceptionTest = null;
+        }
+
         protected Fixture Fixture { get; } = new Fixture();
         protected Action ExceptionTest { get; set; }
 
