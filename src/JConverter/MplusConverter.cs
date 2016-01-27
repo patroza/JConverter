@@ -130,7 +130,7 @@ namespace JConverter
                         return ProcessValueLine(columns);
                     var info = GetContextInfo(line, columns);
                     throw new NonNumericalException(
-                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}",
+                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}",
                         info);
                 }
                 VariableNames = columns.ToList();

@@ -110,10 +110,14 @@ namespace JConverter.Tests.Unit
                 ExceptionTest();
             } catch (NonNumericalException ex)
             {
-                ex.Context.LineNumber.Should().Be(1);
-                ex.Context.Column.Should().Be(2);
-                ex.Context.Context.Should().Be("0,00001\tNotAHeader");
-                ex.Context.FirstMatch.Should().Be("NotAHeader");
+                var info = ex.Context;
+                info.LineNumber.Should().Be(1);
+                info.Column.Should().Be(2);
+                info.Context.Should().Be("0,00001\tNotAHeader");
+                info.FirstMatch.Should().Be("NotAHeader");
+                ex.Message.Should()
+                    .Be(
+                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}");
             }
         }
     }
