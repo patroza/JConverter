@@ -110,10 +110,10 @@ namespace JConverter.Tests.Unit
                 ExceptionTest();
             } catch (NonNumericalException ex)
             {
-                ex.LineNumber.Should().Be(1);
-                ex.Column.Should().Be(2);
-                ex.Context.Should().Be("0,00001\tNotAHeader");
-                ex.FirstMatch.Should().Be("NotAHeader");
+                ex.Context.LineNumber.Should().Be(1);
+                ex.Context.Column.Should().Be(2);
+                ex.Context.Context.Should().Be("0,00001\tNotAHeader");
+                ex.Context.FirstMatch.Should().Be("NotAHeader");
             }
         }
     }

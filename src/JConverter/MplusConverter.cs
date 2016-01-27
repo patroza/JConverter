@@ -24,17 +24,17 @@ namespace JConverter
             OutInpFile = GenerateOutFilePath(".inp");
         }
 
-        private IAbsoluteFilePath GenerateOutFilePath(string ext)
-        {
-            var inFileProcessed = InFile.ToString().Replace(" ", "_");
-            return (inFileProcessed + ext).ToAbsoluteFilePath();
-        }
-
         public IAbsoluteFilePath OutInpFile { get; }
 
         public IAbsoluteFilePath OutDatFile { get; }
 
         public IAbsoluteFilePath InFile { get; }
+
+        private IAbsoluteFilePath GenerateOutFilePath(string ext)
+        {
+            var inFileProcessed = InFile.ToString().Replace(" ", "_");
+            return (inFileProcessed + ext).ToAbsoluteFilePath();
+        }
 
         public void ProcessFile()
         {
@@ -53,9 +53,11 @@ namespace JConverter
         private void ConfirmOutFilesDontExist()
         {
             if (OutDatFile.Exists)
-                throw new InvalidOperationException("The .dat file already exists, please delete it first: " + OutDatFile);
+                throw new InvalidOperationException("The .dat file already exists, please delete it first: " +
+                                                    OutDatFile);
             if (OutInpFile.Exists)
-                throw new InvalidOperationException("The .inp file already exists, please delete it first: " + OutInpFile);
+                throw new InvalidOperationException("The .inp file already exists, please delete it first: " +
+                                                    OutInpFile);
         }
 
         private IEnumerable<string> ParseAndTransformData()
@@ -126,11 +128,25 @@ namespace JConverter
                 {
                     if (_config.IgnoreNonNumerical)
                         return ProcessValueLine(columns);
-                    throw new NotSupportedException(
-                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
+                    var info = GetContextInfo(line, columns);
+                    throw new NonNumericalException(
+                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}",
+                        info);
                 }
                 VariableNames = columns.ToList();
                 return null;
+            }
+
+            private static ContextInfo GetContextInfo(Tuple<int, string> line, string[] columns)
+            {
+                var firstMatch = columns.First(x => NonNumerical.IsMatch(x));
+                return new ContextInfo
+                {
+                    FirstMatch = firstMatch,
+                    Column = columns.ToList().IndexOf(firstMatch) + 1,
+                    LineNumber = line.Item1,
+                    Context = line.Item2
+                };
             }
 
             private string ProcessValueLine(string[] columns)
@@ -165,6 +181,13 @@ namespace JConverter
             private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
         }
 
+        public class ContextInfo
+        {
+            public string FirstMatch { get; set; }
+            public int Column { get; set; }
+            public int LineNumber { get; set; }
+            public string Context { get; set; }
+        }
 
         internal class InpDataGenerator
         {
@@ -284,5 +307,15 @@ namespace JConverter
 
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
+    }
+
+    public class NonNumericalException : NotSupportedException
+    {
+        public NonNumericalException(string message, MplusConverter.ContextInfo context) : base(message)
+        {
+            Context = context;
+        }
+
+        public MplusConverter.ContextInfo Context { get; set; }
     }
 }
