@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using JConverter.Properties;
 
 namespace JConverter
 {
@@ -115,7 +116,8 @@ namespace JConverter
             {
                 if (line.Item1 != 0)
                 {
-                    return null;
+                    if (_config.IgnoreNonNumerical)
+                        return ProcessValueLine(columns);
                     throw new NotSupportedException(
                         $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
                 }
@@ -261,8 +263,8 @@ namespace JConverter
 
         internal class Config
         {
-            public IDictionary<string, string> Replacements { get; } = new Dictionary<string, string> {{".", ","}};
-            public string EmptyReplacement { get; } = "-999";
+            public IDictionary<string, string> Replacements { get; set; } = new Dictionary<string, string> {{".", ","}};
+            public string EmptyReplacement { get; set; } = "-999";
             public int MaxHeaderLength { get; set; } = 8;
             public int MaxLineLength { get; set; } = 80;
             public string AnalysisType { get; set; } = "BASIC";
@@ -270,6 +272,8 @@ namespace JConverter
             public string DefaultIndent { get; set; } = "\t\t";
             public string ColumnJoiner { get; set; } = "\t";
             public char ColumnSplitter { get; set; } = '\t';
+            public bool IgnoreNonNumerical { get; set; }
+
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
     }

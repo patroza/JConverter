@@ -1,4 +1,5 @@
 ﻿using System;
+using JConverter.Properties;
 
 namespace JConverter
 {
@@ -6,7 +7,11 @@ namespace JConverter
     {
         private static void Main(string[] args)
         {
-            var config = new MplusConverter.Config();
+            var config = new MplusConverter.Config
+            {
+                EmptyReplacement = Settings.Default.MissingValue,
+                IgnoreNonNumerical = Settings.Default.IgnoreNonNumericalOnOtherLines
+            };
             try
             {
                 foreach (var fn in args)
