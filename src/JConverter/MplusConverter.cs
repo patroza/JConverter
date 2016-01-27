@@ -114,8 +114,11 @@ namespace JConverter
             private string ProcessVariableNamesLine(Tuple<int, string> line, string[] columns)
             {
                 if (line.Item1 != 0)
+                {
+                    return null;
                     throw new NotSupportedException(
                         $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
+                }
                 VariableNames = columns.ToList();
                 return null;
             }
