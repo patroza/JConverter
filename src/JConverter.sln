@@ -15,6 +15,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JConverter2", "JConverter2\JConverter2.csproj", "{2AF06659-247F-495A-9249-1460F87B62C8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JConverter3", "JConverter3\JConverter3.csproj", "{D55366BB-7837-48EA-B172-2B5394A0D807}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JConverter.Tests", "JConverter.Tests\JConverter.Tests.csproj", "{8CA96EC6-B95F-45A6-8A62-507B79C74F37}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,6 +35,10 @@ Global
 		{D55366BB-7837-48EA-B172-2B5394A0D807}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D55366BB-7837-48EA-B172-2B5394A0D807}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D55366BB-7837-48EA-B172-2B5394A0D807}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CA96EC6-B95F-45A6-8A62-507B79C74F37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CA96EC6-B95F-45A6-8A62-507B79C74F37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CA96EC6-B95F-45A6-8A62-507B79C74F37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CA96EC6-B95F-45A6-8A62-507B79C74F37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

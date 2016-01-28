@@ -1,31 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using NDepend.Path;
 
 namespace JConverter
 {
-    internal class MplusConverter
+    public class MplusConverter
     {
         private readonly Config _config;
+        private readonly ILogger _logger;
         private SpssDataTransformer _spssDataTransformer;
 
-        public MplusConverter(string inFile, Config config)
+        public MplusConverter(IAbsoluteFilePath inFile, Config config, ILogger logger)
         {
+            Contract.Requires<ArgumentNullException>(inFile != null);
+            Contract.Requires<ArgumentNullException>(config != null);
+            Contract.Requires<ArgumentNullException>(logger != null);
             _config = config;
+            _logger = logger;
             InFile = inFile;
-            var inFileProcessed = InFile.Replace(" ", "_");
-            OutDatFile = inFileProcessed + ".dat";
-            OutInpFile = inFileProcessed + ".inp";
+            OutDatFile = GenerateOutFilePath(".dat");
+            OutInpFile = GenerateOutFilePath(".inp");
         }
 
-        public string OutInpFile { get; }
+        public IAbsoluteFilePath OutInpFile { get; }
 
-        public string OutDatFile { get; }
+        public IAbsoluteFilePath OutDatFile { get; }
 
-        public string InFile { get; }
+        public IAbsoluteFilePath InFile { get; }
+
+        private IAbsoluteFilePath GenerateOutFilePath(string ext)
+        {
+            var inFileProcessed = InFile.ToString().Replace(" ", "_");
+            return (inFileProcessed + ext).ToAbsoluteFilePath();
+        }
 
         public void ProcessFile()
         {
@@ -38,50 +50,55 @@ namespace JConverter
 
         private void ConfirmInputFileExists()
         {
-            if (!File.Exists(InFile)) throw new Exception("The file does not exist: " + InFile);
+            if (!InFile.Exists) throw new FileNotFoundException("The file does not exist: " + InFile);
         }
 
         private void ConfirmOutFilesDontExist()
         {
-            if (File.Exists(OutDatFile))
-                throw new Exception("The .dat file already exists, please delete it first: " + OutDatFile);
-            if (File.Exists(OutInpFile))
-                throw new Exception("The .inp file already exists, please delete it first: " + OutInpFile);
+            if (OutDatFile.Exists)
+                throw new InvalidOperationException("The .dat file already exists, please delete it first: " +
+                                                    OutDatFile);
+            if (OutInpFile.Exists)
+                throw new InvalidOperationException("The .inp file already exists, please delete it first: " +
+                                                    OutInpFile);
         }
 
         private IEnumerable<string> ParseAndTransformData()
         {
             var data = ReadInputFile();
-            _spssDataTransformer = new SpssDataTransformer(_config, data);
+            _spssDataTransformer = new SpssDataTransformer(_config, _logger, data);
             _spssDataTransformer.TransformData();
             return data;
         }
 
-        private string[] ReadInputFile() => File.ReadAllLines(InFile);
+        private string[] ReadInputFile() => File.ReadAllLines(InFile.ToString());
 
         private void CreateTransformedDatFile(IEnumerable<string> data)
-            => File.WriteAllText(OutDatFile, GenerateTransformedDatData(data));
+            => File.WriteAllText(OutDatFile.ToString(), GenerateTransformedDatData(data));
 
         private string GenerateTransformedDatData(IEnumerable<string> data)
             => string.Join(_config.NewLine, data.Where(x => x != null));
 
-        private void CreateInpFile() => File.WriteAllText(OutInpFile, GenerateInpData());
+        private void CreateInpFile() => File.WriteAllText(OutInpFile.ToString(), GenerateInpData());
 
         private string GenerateInpData()
             =>
-                new InpDataGenerator(_config, _spssDataTransformer.VariableNames, new FileInfo(OutDatFile).Name)
+                new InpDataGenerator(_config, _logger, _spssDataTransformer.VariableNames, OutDatFile.FileName)
                     .GenerateInpData();
 
         internal class SpssDataTransformer
         {
-            private static readonly Regex NonNumerical = new Regex(@"[^\d,.-]+", RegexOptions.Compiled);
+            private static readonly string dotNotation = ",.";
+            private static readonly Regex NumericalInclScientific = new Regex(@"^(-?\d+)[" + dotNotation + @"]?\d+(e-|e\+|e|\d+)\d+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             private readonly Config _config;
+            private readonly ILogger _logger;
             private readonly string[] _data;
             private int _amountOfColumns;
 
-            public SpssDataTransformer(Config config, string[] data)
+            public SpssDataTransformer(Config config, ILogger logger, string[] data)
             {
                 _config = config;
+                _logger = logger;
                 _data = data;
             }
 
@@ -97,10 +114,12 @@ namespace JConverter
             {
                 var columns = line.Item2.Split(_config.ColumnSplitter);
                 VerifyAmountOfColumns(line, columns);
-                return columns.Any(x => NonNumerical.IsMatch(x))
+                return columns.Any(IsNotNumerical)
                     ? ProcessVariableNamesLine(line, columns)
                     : ProcessValueLine(columns);
             }
+
+            private static bool IsNotNumerical(string x) => !NumericalInclScientific.IsMatch(x);
 
             private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
             {
@@ -114,10 +133,28 @@ namespace JConverter
             private string ProcessVariableNamesLine(Tuple<int, string> line, string[] columns)
             {
                 if (line.Item1 != 0)
-                    throw new NotSupportedException(
-                        $"There are non numerical characters on another line than the first. {HumanReadableLineNumber(line.Item1)}");
+                {
+                    var info = GetContextInfo(line, columns);
+                    var message = $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}";
+                    _logger.Write(message);
+                    if (_config.IgnoreNonNumerical)
+                        return ProcessValueLine(columns);
+                    throw new NonNumericalException(message, info);
+                }
                 VariableNames = columns.ToList();
                 return null;
+            }
+
+            private static ContextInfo GetContextInfo(Tuple<int, string> line, string[] columns)
+            {
+                var firstMatch = columns.First(IsNotNumerical);
+                return new ContextInfo
+                {
+                    FirstMatch = firstMatch,
+                    Column = columns.ToList().IndexOf(firstMatch) + 1,
+                    LineNumber = line.Item1,
+                    Context = line.Item2
+                };
             }
 
             private string ProcessValueLine(string[] columns)
@@ -152,16 +189,25 @@ namespace JConverter
             private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
         }
 
+        public class ContextInfo
+        {
+            public string FirstMatch { get; set; }
+            public int Column { get; set; }
+            public int LineNumber { get; set; }
+            public string Context { get; set; }
+        }
 
         internal class InpDataGenerator
         {
             private readonly Config _config;
+            private readonly ILogger _logger;
             private readonly string _outDatFile;
             private readonly List<string> _variableNames;
 
-            public InpDataGenerator(Config config, List<string> variableNames, string outDatFile)
+            public InpDataGenerator(Config config, ILogger logger, List<string> variableNames, string outDatFile)
             {
                 _config = config;
+                _logger = logger;
                 _variableNames = variableNames;
                 _outDatFile = outDatFile;
             }
@@ -256,10 +302,10 @@ namespace JConverter
             }
         }
 
-        internal class Config
+        public class Config
         {
-            public IDictionary<string, string> Replacements { get; } = new Dictionary<string, string> {{".", ","}};
-            public string EmptyReplacement { get; } = "-999";
+            public IDictionary<string, string> Replacements { get; set; } = new Dictionary<string, string> {{",", "."}};
+            public string EmptyReplacement { get; set; } = "-999";
             public int MaxHeaderLength { get; set; } = 8;
             public int MaxLineLength { get; set; } = 80;
             public string AnalysisType { get; set; } = "BASIC";
@@ -267,7 +313,24 @@ namespace JConverter
             public string DefaultIndent { get; set; } = "\t\t";
             public string ColumnJoiner { get; set; } = "\t";
             public char ColumnSplitter { get; set; } = '\t';
+            public bool IgnoreNonNumerical { get; set; }
+
             public bool HasEmptyReplacement() => EmptyReplacement != null;
         }
+    }
+
+    public interface ILogger
+    {
+        void Write(string data);
+    }
+
+    public class NonNumericalException : NotSupportedException
+    {
+        public NonNumericalException(string message, MplusConverter.ContextInfo context) : base(message)
+        {
+            Context = context;
+        }
+
+        public MplusConverter.ContextInfo Context { get; set; }
     }
 }
