@@ -102,7 +102,6 @@ namespace JConverter.Tests.Unit
             SUT.OutDatFile.Exists.Should().BeTrue();
         }
 
-
         [Test]
         public void WhenProcessingFileWithMultipleRowsOfNonNumericalShouldThrowError()
         {
@@ -120,13 +119,14 @@ namespace JConverter.Tests.Unit
             catch (NonNumericalException ex)
             {
                 var info = ex.Context;
-                info.LineNumber.Should().Be(1);
+                info.Row.Should().Be(1);
+                info.LineNumber.Should().Be(2);
                 info.Column.Should().Be(2);
                 info.Context.Should().Be("0,00001\tNotAHeader");
                 info.FirstMatch.Should().Be("NotAHeader");
                 ex.Message.Should()
                     .Be(
-                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}");
+                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Row: {info.Row}, Column: {info.Column}, firstMatch: {info.FirstMatch}");
             }
         }
     }

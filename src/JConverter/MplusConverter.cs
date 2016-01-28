@@ -89,11 +89,17 @@ namespace JConverter
         internal class SpssDataTransformer
         {
             private static readonly string dotNotation = ",.";
-            private static readonly Regex NumericalInclScientific = new Regex(@"^(-?\d+)[" + dotNotation + @"]?\d+(e-|e\+|e|\d+)\d+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+            private static readonly Regex NumericalInclScientific =
+                new Regex(@"^(-?\d+)[" + dotNotation + @"]?\d+(e-|e\+|e|\d+)\d+$",
+                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
             private readonly Config _config;
-            private readonly ILogger _logger;
             private readonly string[] _data;
+            private readonly ILogger _logger;
             private int _amountOfColumns;
+
+            private int _rowOffset;
 
             public SpssDataTransformer(Config config, ILogger logger, string[] data)
             {
@@ -106,13 +112,13 @@ namespace JConverter
 
             public void TransformData()
             {
-                foreach (var lInfo in _data.Select((x, i) => Tuple.Create(i, x)))
-                    _data[lInfo.Item1] = TransformLine(lInfo);
+                foreach (var lInfo in _data.Select((x, i) => new FileLine(i, x)))
+                    _data[lInfo.Index] = TransformLine(lInfo);
             }
 
-            private string TransformLine(Tuple<int, string> line)
+            private string TransformLine(FileLine line)
             {
-                var columns = line.Item2.Split(_config.ColumnSplitter);
+                var columns = line.Text.Split(_config.ColumnSplitter);
                 VerifyAmountOfColumns(line, columns);
                 return columns.Any(IsNotNumerical)
                     ? ProcessVariableNamesLine(line, columns)
@@ -121,39 +127,42 @@ namespace JConverter
 
             private static bool IsNotNumerical(string x) => !NumericalInclScientific.IsMatch(x);
 
-            private void VerifyAmountOfColumns(Tuple<int, string> line, string[] columns)
+            private void VerifyAmountOfColumns(FileLine line, string[] columns)
             {
-                if (line.Item1 == 0)
+                if (line.LineNumber == 1)
                     _amountOfColumns = columns.Length;
                 else if (columns.Length != _amountOfColumns)
                     throw new Exception(
-                        $"{HumanReadableLineNumber(line.Item1)} has {columns.Length} columns but should be {_amountOfColumns}");
+                        $"Line: {line.LineNumber} has {columns.Length} columns but should be {_amountOfColumns}");
             }
 
-            private string ProcessVariableNamesLine(Tuple<int, string> line, string[] columns)
+            private string ProcessVariableNamesLine(FileLine line, string[] columns)
             {
-                if (line.Item1 != 0)
+                if (line.LineNumber != 1)
                 {
                     var info = GetContextInfo(line, columns);
-                    var message = $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Column: {info.Column}, firstMatch: {info.FirstMatch}";
+                    var message =
+                        $"There are non numerical characters on another line than the first. Line: {info.LineNumber}, Row: {info.Row}, Column: {info.Column}, firstMatch: {info.FirstMatch}";
                     _logger.Write(message);
                     if (_config.IgnoreNonNumerical)
                         return ProcessValueLine(columns);
                     throw new NonNumericalException(message, info);
                 }
                 VariableNames = columns.ToList();
+                _rowOffset = -1;
                 return null;
             }
 
-            private static ContextInfo GetContextInfo(Tuple<int, string> line, string[] columns)
+            private ContextInfo GetContextInfo(FileLine line, string[] columns)
             {
                 var firstMatch = columns.First(IsNotNumerical);
                 return new ContextInfo
                 {
                     FirstMatch = firstMatch,
                     Column = columns.ToList().IndexOf(firstMatch) + 1,
-                    LineNumber = line.Item1,
-                    Context = line.Item2
+                    Row = line.LineNumber + _rowOffset,
+                    LineNumber = line.LineNumber,
+                    Context = line.Text
                 };
             }
 
@@ -186,7 +195,21 @@ namespace JConverter
                     (current, replacement) => current.Replace(replacement.Key, replacement.Value));
             }
 
-            private static string HumanReadableLineNumber(int arrayIndex) => $"Line: {arrayIndex + 1}";
+            private static string HumanReadableLineNumber(FileLine line) => $"Line: {line.LineNumber}";
+
+            class FileLine
+            {
+                public FileLine(int index, string text)
+                {
+                    Index = index;
+                    LineNumber = index + 1;
+                    Text = text;
+                }
+
+                public int Index { get; }
+                public int LineNumber { get; }
+                public string Text { get; }
+            }
         }
 
         public class ContextInfo
@@ -195,6 +218,7 @@ namespace JConverter
             public int Column { get; set; }
             public int LineNumber { get; set; }
             public string Context { get; set; }
+            public int Row { get; set; }
         }
 
         internal class InpDataGenerator
