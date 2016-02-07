@@ -13,6 +13,7 @@ namespace JConverter
     {
         private readonly Config _config;
         private readonly ILogger _logger;
+        private SpssDataTransformer.Info _info;
         private SpssDataTransformer _spssDataTransformer;
 
         public MplusConverter(IAbsoluteFilePath inFile, Config config, ILogger logger)
@@ -43,8 +44,8 @@ namespace JConverter
         {
             ConfirmInputFileExists();
             ConfirmOutFilesDontExist();
-            var data = ParseAndTransformData();
-            CreateTransformedDatFile(data);
+            ParseAndTransformData();
+            CreateTransformedDatFile();
             CreateInpFile();
         }
 
@@ -63,27 +64,27 @@ namespace JConverter
                                                     OutInpFile);
         }
 
-        private IEnumerable<string> ParseAndTransformData()
+        private void ParseAndTransformData()
         {
             var data = ReadInputFile();
-            _spssDataTransformer = new SpssDataTransformer(_config, _logger, data);
-            _spssDataTransformer.TransformData();
-            return data;
+            // TODO: Don't transform data in place..
+            _spssDataTransformer = new SpssDataTransformer(_config, _logger);
+            _info = _spssDataTransformer.TransformData(data);
         }
 
         private string[] ReadInputFile() => File.ReadAllLines(InFile.ToString());
 
-        private void CreateTransformedDatFile(IEnumerable<string> data)
-            => File.WriteAllText(OutDatFile.ToString(), GenerateTransformedDatData(data));
+        private void CreateTransformedDatFile()
+            => File.WriteAllText(OutDatFile.ToString(), GenerateTransformedDatData());
 
-        private string GenerateTransformedDatData(IEnumerable<string> data)
-            => string.Join(_config.NewLine, data.Where(x => x != null));
+        private string GenerateTransformedDatData()
+            => string.Join(_config.NewLine, _info.Data);
 
         private void CreateInpFile() => File.WriteAllText(OutInpFile.ToString(), GenerateInpData());
 
         private string GenerateInpData()
             =>
-                new InpDataGenerator(_config, _logger, _spssDataTransformer.VariableNames, OutDatFile.FileName)
+                new InpDataGenerator(_config, _logger, _info.VariableNames, OutDatFile.FileName)
                     .GenerateInpData();
 
         internal class SpssDataTransformer
@@ -94,26 +95,32 @@ namespace JConverter
                 new Regex(@"^(-?\d+)[" + dotNotation + @"]?\d+(e-|e\+|e|\d+)\d+$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+            private static readonly Regex Empty = new Regex(@"^\s*$");
+
             private readonly Config _config;
-            private readonly string[] _data;
             private readonly ILogger _logger;
             private int _amountOfColumns;
+            private Info _info;
 
             private int _rowOffset;
 
-            public SpssDataTransformer(Config config, ILogger logger, string[] data)
+            public SpssDataTransformer(Config config, ILogger logger)
             {
                 _config = config;
                 _logger = logger;
-                _data = data;
             }
 
-            public List<string> VariableNames { get; private set; } = new List<string>();
-
-            public void TransformData()
+            public Info TransformData(string[] data)
             {
-                foreach (var lInfo in _data.Select((x, i) => new FileLine(i, x)))
-                    _data[lInfo.Index] = TransformLine(lInfo);
+                _info = new Info
+                {
+                    Data =
+                        data.Select((x, i) => new FileLine(i, x))
+                            .Select(TransformLine)
+                            .Where(transformed => transformed != null)
+                            .ToList()
+                };
+                return _info;
             }
 
             private string TransformLine(FileLine line)
@@ -125,15 +132,15 @@ namespace JConverter
                     : ProcessValueLine(columns);
             }
 
-            private static bool IsNotNumerical(string x) => !NumericalInclScientific.IsMatch(x);
+            private static bool IsNotNumerical(string x) => !NumericalInclScientific.IsMatch(x) && !Empty.IsMatch(x);
 
-            private void VerifyAmountOfColumns(FileLine line, string[] columns)
+            private void VerifyAmountOfColumns(FileLine line, ICollection<string> columns)
             {
                 if (line.LineNumber == 1)
-                    _amountOfColumns = columns.Length;
-                else if (columns.Length != _amountOfColumns)
+                    _amountOfColumns = columns.Count;
+                else if (columns.Count != _amountOfColumns)
                     throw new Exception(
-                        $"Line: {line.LineNumber} has {columns.Length} columns but should be {_amountOfColumns}");
+                        $"Line: {line.LineNumber} has {columns.Count} columns but should be {_amountOfColumns}");
             }
 
             private string ProcessVariableNamesLine(FileLine line, string[] columns)
@@ -148,7 +155,7 @@ namespace JConverter
                         return ProcessValueLine(columns);
                     throw new NonNumericalException(message, info);
                 }
-                VariableNames = columns.ToList();
+                _info.VariableNames = columns.ToList();
                 _rowOffset = -1;
                 return null;
             }
@@ -196,6 +203,13 @@ namespace JConverter
             }
 
             private static string HumanReadableLineNumber(FileLine line) => $"Line: {line.LineNumber}";
+
+
+            internal class Info
+            {
+                public List<string> VariableNames { get; set; } = new List<string>();
+                public List<string> Data { get; set; } = new List<string>();
+            }
 
             class FileLine
             {
